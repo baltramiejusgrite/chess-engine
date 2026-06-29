@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from app.engine import choose_move
+from app.search import choose_move
 
 app = FastAPI(title="Chess Engine")
 
