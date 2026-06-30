@@ -127,7 +127,6 @@
       text-align: center;
       min-height: 20px;
     }
-    /* Cleaner legal-move indicators */
     .highlight-move {
       background-image: radial-gradient(circle, rgba(20,20,20,0.32) 18%, transparent 19%) !important;
     }
@@ -136,6 +135,9 @@
     }
     .highlight-check {
       background: radial-gradient(circle, rgba(220,60,60,0.9) 35%, rgba(220,60,60,0.45) 72%) !important;
+    }
+    .highlight-selected {
+      box-shadow: inset 0 0 0 4px rgba(212,180,131,0.85) !important;
     }
   </style>
 </head>
@@ -168,24 +170,25 @@
   <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
   <script>
     const OPPONENTS = [
-      { id: "my_engine_1",   name: "My Engine · Lvl 1",  elo: "~650" },
-      { id: "my_engine_2",   name: "My Engine · Lvl 2",  elo: "~900" },
-      { id: "my_engine_3",   name: "My Engine · Lvl 3",  elo: "~1200" },
-      { id: "stockfish_mid", name: "Stockfish Lite",          elo: "~2000" },
-      { id: "magnus",        name: "Magnus Carlsen (Stockfish)",     elo: "~2850" },
-      { id: "stockfish_max", name: "Stockfish Max",      elo: "~3000+" },
+      { id: "my_engine_1",   name: "My Engine \u00b7 Lvl 1",  elo: "~700" },
+      { id: "my_engine_2",   name: "My Engine \u00b7 Lvl 2",  elo: "~1000" },
+      { id: "my_engine_3",   name: "My Engine \u00b7 Lvl 3",  elo: "~1200" },
+      { id: "stockfish_4",   name: "Stockfish Lite",          elo: "~2000" },
+      { id: "magnus",        name: "Magnus Carlsen",          elo: "~2850" },
+      { id: "stockfish_6",   name: "Stockfish Max",           elo: "Full strength" },
     ];
 
     let game = new Chess();
     let board = null;
     let selectedColor = "white";
-    let selectedOpponent = "my_engine_1";
+    let selectedOpponent = "my_engine_3";
     let playerColor = "white";
+    let selectedSquare = null;   // for click-to-move
 
     const oppContainer = document.getElementById("opponents");
     OPPONENTS.forEach((opp, i) => {
       const card = document.createElement("div");
-      card.className = "opponent-card" + (i === 0 ? " selected" : "");
+      card.className = "opponent-card" + (i === 2 ? " selected" : "");
       card.dataset.id = opp.id;
       card.innerHTML =
         '<div class="avatar"></div>' +
@@ -222,7 +225,7 @@
     }
 
     function clearMoveHighlights() {
-      $('#board .square-55d63').removeClass('highlight-move highlight-capture');
+      $('#board .square-55d63').removeClass('highlight-move highlight-capture highlight-selected');
     }
 
     function highlightLegalMoves(source) {
@@ -258,11 +261,38 @@
       }
     }
 
+    function isMyPieceAt(square) {
+      const piece = game.get(square);
+      if (!piece) return false;
+      return (piece.color === 'w') === playerIsWhite();
+    }
+
+    function myTurn() {
+      if (game.game_over()) return false;
+      return (game.turn() === 'w') === playerIsWhite();
+    }
+
+    // Apply a move chosen by the human (from drag OR click). Returns true if applied.
+    function applyHumanMove(from, to) {
+      const move = game.move({ from: from, to: to, promotion: 'q' });
+      if (move === null) return false;
+      board.position(game.fen());
+      updateCheckHighlight();
+      if (game.game_over()) {
+        setStatus("Game over: " + gameResult());
+      } else {
+        setStatus("Opponent thinking...");
+        window.setTimeout(requestEngineMove, 250);
+      }
+      return true;
+    }
+
+    // ----- Drag handlers -----
     function onDragStart(source, piece) {
+      clearSelection();
       if (game.game_over()) return false;
       if (piece.search(new RegExp("^" + (playerIsWhite() ? "b" : "w"))) !== -1) return false;
-      const turnIsMine = (game.turn() === "w") === playerIsWhite();
-      if (!turnIsMine) return false;
+      if (!myTurn()) return false;
       highlightLegalMoves(source);
     }
 
@@ -279,6 +309,39 @@
 
     function onSnapEnd() {
       clearMoveHighlights();
+    }
+
+    // ----- Click-to-move -----
+    function clearSelection() {
+      selectedSquare = null;
+      clearMoveHighlights();
+    }
+
+    function selectSquareForClick(square) {
+      selectedSquare = square;
+      clearMoveHighlights();
+      squareEl(square).addClass('highlight-selected');
+      highlightLegalMoves(square);
+    }
+
+    function onSquareClick(square) {
+      if (!myTurn()) return;
+
+      // If a piece is already selected, try to move it to the clicked square
+      if (selectedSquare) {
+        if (square === selectedSquare) { clearSelection(); return; }  // clicked same -> deselect
+        // Clicking another of your own pieces -> switch selection
+        if (isMyPieceAt(square)) { selectSquareForClick(square); return; }
+        // Otherwise attempt the move
+        const applied = applyHumanMove(selectedSquare, square);
+        clearSelection();
+        return;
+      }
+
+      // No piece selected yet: select if it's your piece
+      if (isMyPieceAt(square)) {
+        selectSquareForClick(square);
+      }
     }
 
     async function requestEngineMove() {
@@ -319,6 +382,7 @@
 
     function newGame() {
       game = new Chess();
+      clearSelection();
       playerColor = selectedColor;
       if (selectedColor === "random") {
         playerColor = Math.random() < 0.5 ? "white" : "black";
@@ -328,10 +392,19 @@
       clearMoveHighlights();
       clearCheckHighlight();
       setStatus("Your move.");
+      attachSquareClicks();
       if (!playerIsWhite()) {
         setStatus("Opponent thinking...");
         window.setTimeout(requestEngineMove, 400);
       }
+    }
+
+    // Attach click handlers to all board squares (re-attach after board redraws)
+    function attachSquareClicks() {
+      $('#board .square-55d63').off('click.ctm').on('click.ctm', function () {
+        const square = $(this).attr('data-square');
+        if (square) onSquareClick(square);
+      });
     }
 
     board = Chessboard("board", {
@@ -342,6 +415,9 @@
       onDrop: onDrop,
       onSnapEnd: onSnapEnd
     });
+
+    // Attach click handlers initially
+    attachSquareClicks();
   </script>
 </body>
 </html>
