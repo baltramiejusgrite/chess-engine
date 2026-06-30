@@ -6,123 +6,331 @@
   <title>Chess Engine</title>
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
   <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: #0d0b1a;
-      color: #e8e8f0;
-      max-width: 560px;
-      margin: 40px auto;
-      padding: 0 20px;
-      text-align: center;
+    :root {
+      --bg: #0c0c0c;
+      --panel: #1a1a1a;
+      --panel-hover: #242424;
+      --border: #2a2a2a;
+      --accent: #d4b483;
+      --accent-dim: #c9a876;
+      --text: #e8e8e8;
+      --text-muted: #888;
     }
-    h1 { color: #a78bfa; }
-    #board { width: 480px; margin: 20px auto; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      gap: 32px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    h1 {
+      font-size: 28px;
+      margin: 0 0 20px 0;
+      letter-spacing: -0.5px;
+    }
+    h1 .accent { color: var(--accent); font-style: italic; }
+    #board { width: 480px; }
+    .left-col { display: flex; flex-direction: column; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      width: 300px;
+    }
+    .panel-label {
+      color: var(--text-muted);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin: 0 0 12px 0;
+    }
+    .color-row { display: flex; gap: 8px; margin-bottom: 24px; }
+    .color-btn {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.15s;
+    }
+    .color-btn:hover { background: var(--panel-hover); }
+    .color-btn.selected {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .opponent-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .opponent-card:hover { background: var(--panel-hover); }
+    .opponent-card.selected { border-color: var(--accent); }
+    .avatar {
+      width: 40px; height: 40px;
+      border-radius: 6px;
+      background: var(--panel-hover);
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .opponent-info { flex: 1; }
+    .opponent-name { font-size: 14px; font-weight: 600; }
+    .opponent-elo { font-size: 12px; color: var(--text-muted); }
+    .new-game-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #0c0c0c;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    .new-game-btn:hover { background: var(--accent-dim); }
     #status {
       margin-top: 16px;
-      font-size: 18px;
-      min-height: 24px;
+      font-size: 14px;
+      color: var(--text-muted);
+      text-align: center;
+      min-height: 20px;
     }
-    button {
-      background: #a78bfa;
-      color: #0d0b1a;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 12px;
+    .highlight-move {
+      background: radial-gradient(circle, rgba(212,180,131,0.55) 22%, transparent 24%) !important;
+    }
+    .highlight-capture {
+      box-shadow: inset 0 0 0 4px rgba(212,180,131,0.6) !important;
+    }
+    .highlight-check {
+      background: radial-gradient(circle, rgba(220,60,60,0.85) 35%, rgba(220,60,60,0.4) 70%) !important;
     }
   </style>
 </head>
 <body>
-  <h1>Chess Engine</h1>
-  <p>You play White. Drag a piece to move.</p>
-  <div id="board"></div>
-  <div id="status">Your move.</div>
-  <button onclick="resetGame()">New game</button>
+  <div class="container">
+    <div class="left-col">
+      <h1>Chess <span class="accent">Engine</span></h1>
+      <div id="board"></div>
+      <div id="status">Pick a side and opponent, then New Game.</div>
+    </div>
+
+    <div class="panel">
+      <p class="panel-label">Play as</p>
+      <div class="color-row">
+        <button class="color-btn selected" data-color="white" onclick="selectColor('white')">White</button>
+        <button class="color-btn" data-color="black" onclick="selectColor('black')">Black</button>
+        <button class="color-btn" data-color="random" onclick="selectColor('random')">Random</button>
+      </div>
+
+      <p class="panel-label">Opponent</p>
+      <div id="opponents"></div>
+
+      <button class="new-game-btn" onclick="newGame()">New Game</button>
+    </div>
+  </div>
 
   <script src="https://unpkg.com/jquery@3.6.0/dist/jquery.min.js"></script>
   <script src="https://unpkg.com/chess.js@0.10.3/chess.js"></script>
   <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
   <script>
-    const game = new Chess();
-    let board = null;
+    const OPPONENTS = [
+      { id: "my_engine",        name: "My Engine",         elo: "~1200" },
+      { id: "stockfish_easy",   name: "Stockfish Easy",    elo: "~1100" },
+      { id: "stockfish_medium", name: "Stockfish Medium",  elo: "~1600" },
+      { id: "stockfish_hard",   name: "Stockfish Hard",    elo: "~2100" },
+      { id: "stockfish_max",    name: "Stockfish Max",     elo: "Full strength" },
+    ];
 
-    function setStatus(text) {
-      document.getElementById('status').textContent = text;
+    let game = new Chess();
+    let board = null;
+    let selectedColor = "white";
+    let selectedOpponent = "my_engine";
+    let playerColor = "white";
+
+    const oppContainer = document.getElementById("opponents");
+    OPPONENTS.forEach((opp, i) => {
+      const card = document.createElement("div");
+      card.className = "opponent-card" + (i === 0 ? " selected" : "");
+      card.dataset.id = opp.id;
+      card.innerHTML =
+        '<div class="avatar"></div>' +
+        '<div class="opponent-info">' +
+          '<div class="opponent-name">' + opp.name + '</div>' +
+          '<div class="opponent-elo">' + opp.elo + '</div>' +
+        '</div>';
+      card.onclick = () => selectOpponent(opp.id, card);
+      oppContainer.appendChild(card);
+    });
+
+    function selectColor(color) {
+      selectedColor = color;
+      document.querySelectorAll(".color-btn").forEach(b => {
+        b.classList.toggle("selected", b.dataset.color === color);
+      });
     }
 
-    // Only allow picking up White pieces, and only when it's White's turn
+    function selectOpponent(id, card) {
+      selectedOpponent = id;
+      document.querySelectorAll(".opponent-card").forEach(c => {
+        c.classList.toggle("selected", c === card);
+      });
+    }
+
+    function setStatus(text) {
+      document.getElementById("status").textContent = text;
+    }
+
+    function playerIsWhite() { return playerColor === "white"; }
+
+    function squareEl(square) {
+      return $('#board .square-' + square);
+    }
+
+    function clearMoveHighlights() {
+      $('#board .square-55d63').removeClass('highlight-move highlight-capture');
+    }
+
+    function highlightLegalMoves(source) {
+      const moves = game.moves({ square: source, verbose: true });
+      moves.forEach(m => {
+        if (m.flags.includes('c') || m.flags.includes('e')) {
+          squareEl(m.to).addClass('highlight-capture');
+        } else {
+          squareEl(m.to).addClass('highlight-move');
+        }
+      });
+    }
+
+    function clearCheckHighlight() {
+      $('#board .square-55d63').removeClass('highlight-check');
+    }
+
+    function updateCheckHighlight() {
+      clearCheckHighlight();
+      if (game.in_check()) {
+        const turn = game.turn();
+        const boardState = game.board();
+        for (let r = 0; r < 8; r++) {
+          for (let c = 0; c < 8; c++) {
+            const piece = boardState[r][c];
+            if (piece && piece.type === 'k' && piece.color === turn) {
+              const file = "abcdefgh"[c];
+              const rank = 8 - r;
+              squareEl(file + rank).addClass('highlight-check');
+            }
+          }
+        }
+      }
+    }
+
     function onDragStart(source, piece) {
       if (game.game_over()) return false;
-      if (piece.search(/^b/) !== -1) return false;       // can't move black pieces
-      if (game.turn() !== 'w') return false;             // only on white's turn
+      if (piece.search(new RegExp("^" + (playerIsWhite() ? "b" : "w"))) !== -1) return false;
+      const turnIsMine = (game.turn() === "w") === playerIsWhite();
+      if (!turnIsMine) return false;
+      highlightLegalMoves(source);
     }
 
     function onDrop(source, target) {
-      const move = game.move({ from: source, to: target, promotion: 'q' });
-
-      if (move === null) return 'snapback';   // illegal move -> snap piece back
-
-      setStatus("Engine thinking...");
+      clearMoveHighlights();
+      const move = game.move({ from: source, to: target, promotion: "q" });
+      if (move === null) return "snapback";
       board.position(game.fen());
-
-      if (game.game_over()) {
-        setStatus("Game over: " + gameResult());
-        return;
-      }
-
-      // Ask the engine for its reply
+      updateCheckHighlight();
+      if (game.game_over()) { setStatus("Game over: " + gameResult()); return; }
+      setStatus("Opponent thinking...");
       window.setTimeout(requestEngineMove, 250);
+    }
+
+    function onSnapEnd() {
+      clearMoveHighlights();
     }
 
     async function requestEngineMove() {
       try {
-        const res = await fetch('/move', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fen: game.fen() })
+        const res = await fetch("/move", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fen: game.fen(), difficulty: selectedOpponent })
         });
         const data = await res.json();
 
-        if (data.game_over) {
+        // If the engine had no move because the game was ALREADY over before its turn
+        if (data.game_over && !data.move) {
           board.position(game.fen());
+          updateCheckHighlight();
           setStatus("Game over: " + (data.result || gameResult()));
           return;
         }
 
-        // Apply the engine's move to our local game and the board
+        // Apply the engine's move FIRST, so the final/mating move is shown
         game.move(data.move, { sloppy: true });
         board.position(game.fen());
+        updateCheckHighlight();
 
+        // THEN check whether that move ended the game
         if (game.game_over()) {
           setStatus("Game over: " + gameResult());
         } else {
           setStatus("Your move.");
         }
       } catch (err) {
-        setStatus("Error talking to engine: " + err);
+        setStatus("Error: " + err);
       }
     }
 
     function gameResult() {
-      if (game.in_checkmate()) return (game.turn() === 'w' ? "Black wins" : "White wins");
+      if (game.in_checkmate()) return (game.turn() === "w" ? "Black wins" : "White wins");
       if (game.in_draw()) return "Draw";
       return "Game over";
     }
 
-    function resetGame() {
-      game.reset();
+    function newGame() {
+      game = new Chess();
+      playerColor = selectedColor;
+      if (selectedColor === "random") {
+        playerColor = Math.random() < 0.5 ? "white" : "black";
+      }
+      board.orientation(playerColor);
       board.start();
+      clearMoveHighlights();
+      clearCheckHighlight();
       setStatus("Your move.");
+      if (!playerIsWhite()) {
+        setStatus("Opponent thinking...");
+        window.setTimeout(requestEngineMove, 400);
+      }
     }
 
-    board = Chessboard('board', {
+    board = Chessboard("board", {
       draggable: true,
-      position: 'start',
-      pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
+      position: "start",
+      pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
       onDragStart: onDragStart,
-      onDrop: onDrop
+      onDrop: onDrop,
+      onSnapEnd: onSnapEnd
     });
   </script>
 </body>
