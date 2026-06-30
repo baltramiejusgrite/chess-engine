@@ -14,11 +14,11 @@ STOCKFISH_PATH = find_stockfish()
 
 class MoveRequest(BaseModel):
     fen: str
-    difficulty: str = "my_engine"  # default to your own engine
+    difficulty: str = "my_engine_3"
 
 
 def get_stockfish_move(board: chess.Board, skill_level: int) -> chess.Move:
-    """Get a move from Stockfish at a given skill level."""
+    """Get a move from Stockfish at a given skill level (0-20)."""
     engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
     try:
         engine.configure({"Skill Level": skill_level})
@@ -28,13 +28,16 @@ def get_stockfish_move(board: chess.Board, skill_level: int) -> chess.Move:
         engine.quit()
 
 
-# Map difficulty labels to how we generate the move
+# Each difficulty maps to either:
+#   ("engine", depth)    -> your own engine at a search depth
+#   ("stockfish", skill) -> Stockfish at a skill level (0-20)
 DIFFICULTY_SETTINGS = {
-    "my_engine": None,        # your own engine
-    "stockfish_easy": 1,      # ~1100
-    "stockfish_medium": 5,    # ~1600
-    "stockfish_hard": 10,     # ~2100
-    "stockfish_max": 20,      # full strength
+    "my_engine_1": ("engine", 2),       # ~700
+    "my_engine_2": ("engine", 3),       # ~1000
+    "my_engine_3": ("engine", 5),       # ~1200
+    "stockfish_4": ("stockfish", 8),    # ~2000  (Stockfish Lite)
+    "magnus":      ("stockfish", 17),   # ~2850  (Magnus Carlsen)
+    "stockfish_6": ("stockfish", 20),   # full strength (Stockfish Max)
 }
 
 
@@ -50,14 +53,13 @@ def get_engine_move(req: MoveRequest):
     if board.is_game_over():
         return {"game_over": True, "result": board.result()}
 
-    skill = DIFFICULTY_SETTINGS.get(req.difficulty, None)
+    setting = DIFFICULTY_SETTINGS.get(req.difficulty, ("engine", 5))
+    kind, value = setting
 
-    if skill is None:
-        # Use your own engine
-        move = choose_move(board, depth=5)
+    if kind == "engine":
+        move = choose_move(board, depth=value)
     else:
-        # Use Stockfish at the chosen skill level
-        move = get_stockfish_move(board, skill)
+        move = get_stockfish_move(board, value)
 
     board.push(move)
 

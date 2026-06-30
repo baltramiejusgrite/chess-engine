@@ -26,11 +26,11 @@
       min-height: 100vh;
     }
     .container {
-      max-width: 1000px;
+      max-width: 1100px;
       margin: 0 auto;
       display: flex;
       gap: 32px;
-      align-items: flex-start;
+      align-items: center;
       flex-wrap: wrap;
       justify-content: center;
     }
@@ -40,7 +40,7 @@
       letter-spacing: -0.5px;
     }
     h1 .accent { color: var(--accent); font-style: italic; }
-    #board { width: 480px; }
+    #board { width: 640px; }
     .left-col { display: flex; flex-direction: column; }
     .panel {
       background: var(--panel);
@@ -110,6 +110,16 @@
       margin-top: 20px;
     }
     .new-game-btn:hover { background: var(--accent-dim); }
+    .how-to-link {
+      display: block;
+      text-align: center;
+      margin-top: 14px;
+      color: var(--text-muted);
+      font-size: 12px;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .how-to-link:hover { color: var(--accent); }
     #status {
       margin-top: 16px;
       font-size: 14px;
@@ -117,14 +127,15 @@
       text-align: center;
       min-height: 20px;
     }
+    /* Cleaner legal-move indicators */
     .highlight-move {
-      background: radial-gradient(circle, rgba(212,180,131,0.55) 22%, transparent 24%) !important;
+      background-image: radial-gradient(circle, rgba(20,20,20,0.32) 18%, transparent 19%) !important;
     }
     .highlight-capture {
-      box-shadow: inset 0 0 0 4px rgba(212,180,131,0.6) !important;
+      background-image: radial-gradient(circle, transparent 78%, rgba(20,20,20,0.32) 79%) !important;
     }
     .highlight-check {
-      background: radial-gradient(circle, rgba(220,60,60,0.85) 35%, rgba(220,60,60,0.4) 70%) !important;
+      background: radial-gradient(circle, rgba(220,60,60,0.9) 35%, rgba(220,60,60,0.45) 72%) !important;
     }
   </style>
 </head>
@@ -148,6 +159,7 @@
       <div id="opponents"></div>
 
       <button class="new-game-btn" onclick="newGame()">New Game</button>
+      <a class="how-to-link" href="https://www.chess.com/learn-how-to-play-chess" target="_blank" rel="noopener">New to chess? Learn how to play &rarr;</a>
     </div>
   </div>
 
@@ -156,17 +168,18 @@
   <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
   <script>
     const OPPONENTS = [
-      { id: "my_engine",        name: "My Engine",         elo: "~1200" },
-      { id: "stockfish_easy",   name: "Stockfish Easy",    elo: "~1100" },
-      { id: "stockfish_medium", name: "Stockfish Medium",  elo: "~1600" },
-      { id: "stockfish_hard",   name: "Stockfish Hard",    elo: "~2100" },
-      { id: "stockfish_max",    name: "Stockfish Max",     elo: "Full strength" },
+      { id: "my_engine_1",   name: "My Engine · Lvl 1",  elo: "~650" },
+      { id: "my_engine_2",   name: "My Engine · Lvl 2",  elo: "~900" },
+      { id: "my_engine_3",   name: "My Engine · Lvl 3",  elo: "~1200" },
+      { id: "stockfish_mid", name: "Stockfish Lite",          elo: "~2000" },
+      { id: "magnus",        name: "Magnus Carlsen (Stockfish)",     elo: "~2850" },
+      { id: "stockfish_max", name: "Stockfish Max",      elo: "~3000+" },
     ];
 
     let game = new Chess();
     let board = null;
     let selectedColor = "white";
-    let selectedOpponent = "my_engine";
+    let selectedOpponent = "my_engine_1";
     let playerColor = "white";
 
     const oppContainer = document.getElementById("opponents");
@@ -277,7 +290,6 @@
         });
         const data = await res.json();
 
-        // If the engine had no move because the game was ALREADY over before its turn
         if (data.game_over && !data.move) {
           board.position(game.fen());
           updateCheckHighlight();
@@ -285,12 +297,10 @@
           return;
         }
 
-        // Apply the engine's move FIRST, so the final/mating move is shown
         game.move(data.move, { sloppy: true });
         board.position(game.fen());
         updateCheckHighlight();
 
-        // THEN check whether that move ended the game
         if (game.game_over()) {
           setStatus("Game over: " + gameResult());
         } else {
