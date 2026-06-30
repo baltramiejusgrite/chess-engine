@@ -14,7 +14,7 @@ def play_game(stockfish, my_engine_is_white, skill_level):
     while not board.is_game_over():
         my_turn = (board.turn == chess.WHITE) == my_engine_is_white
         if my_turn:
-            move = choose_move(board, depth=4)  # depth 4 keeps benchmark games fast
+            move = choose_move(board, depth=5)  # depth 4 keeps benchmark games fast
         else:
             result = stockfish.play(board, chess.engine.Limit(time=0.1))
             move = result.move

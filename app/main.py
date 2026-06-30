@@ -2,12 +2,15 @@ import chess
 import chess.engine
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.search import choose_move
 from app.engines_config import find_stockfish
 
 app = FastAPI(title="Chess Engine")
+
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 STOCKFISH_PATH = find_stockfish()
 
@@ -28,16 +31,13 @@ def get_stockfish_move(board: chess.Board, skill_level: int) -> chess.Move:
         engine.quit()
 
 
-# Each difficulty maps to either:
-#   ("engine", depth)    -> your own engine at a search depth
-#   ("stockfish", skill) -> Stockfish at a skill level (0-20)
 DIFFICULTY_SETTINGS = {
-    "my_engine_1": ("engine", 2),       # ~700
-    "my_engine_2": ("engine", 3),       # ~1000
-    "my_engine_3": ("engine", 5),       # ~1200
-    "stockfish_4": ("stockfish", 8),    # ~2000  (Stockfish Lite)
-    "magnus":      ("stockfish", 17),   # ~2850  (Magnus Carlsen)
-    "stockfish_6": ("stockfish", 20),   # full strength (Stockfish Max)
+    "my_engine_1": ("engine", 2),
+    "my_engine_2": ("engine", 3),
+    "my_engine_3": ("engine", 5),
+    "stockfish_4": ("stockfish", 8),
+    "magnus":      ("stockfish", 17),
+    "stockfish_6": ("stockfish", 20),
 }
 
 

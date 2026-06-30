@@ -30,7 +30,7 @@
       margin: 0 auto;
       display: flex;
       gap: 32px;
-      align-items: center;
+      align-items: flex-start;
       flex-wrap: wrap;
       justify-content: center;
     }
@@ -38,24 +38,81 @@
       font-size: 28px;
       margin: 0 0 20px 0;
       letter-spacing: -0.5px;
+      height: 34px;
     }
     h1 .accent { color: var(--accent); font-style: italic; }
     #board { width: 640px; }
     .left-col { display: flex; flex-direction: column; }
+    .right-col {
+      display: flex;
+      flex-direction: column;
+      /* push panel down to align with the board top (title height + its margin) */
+      padding-top: 54px;
+    }
     .panel {
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 20px;
       width: 300px;
+      height: 640px;
+      display: flex;
+      flex-direction: column;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
     }
     .panel-label {
       color: var(--text-muted);
       font-size: 11px;
       letter-spacing: 2px;
       text-transform: uppercase;
-      margin: 0 0 12px 0;
+      margin: 0;
     }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .live-indicator {
+      display: none;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .live-indicator.active { display: inline-flex; }
+    .live-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: livePulse 1.6s ease-in-out infinite;
+    }
+    @keyframes livePulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.8); }
+    }
+    .sound-toggle {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      width: 30px; height: 30px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      padding: 0;
+    }
+    .sound-toggle:hover { background: var(--panel-hover); color: var(--text); }
+    .sound-toggle.on { color: var(--accent); border-color: var(--accent); }
     .color-row { display: flex; gap: 8px; margin-bottom: 24px; }
     .color-btn {
       flex: 1;
@@ -93,6 +150,7 @@
       background: var(--panel-hover);
       border: 1px solid var(--border);
       flex-shrink: 0;
+      object-fit: cover;
     }
     .opponent-info { flex: 1; }
     .opponent-name { font-size: 14px; font-weight: 600; }
@@ -107,9 +165,17 @@
       font-weight: 700;
       font-size: 14px;
       cursor: pointer;
-      margin-top: 20px;
+      margin-top: auto;
+      transition: transform 0.08s ease, background 0.15s ease;
     }
     .new-game-btn:hover { background: var(--accent-dim); }
+    .new-game-btn:active { transform: scale(0.96); }
+    .new-game-btn.pressed { animation: btnPulse 0.3s ease; }
+    @keyframes btnPulse {
+      0% { transform: scale(1); }
+      40% { transform: scale(0.94); }
+      100% { transform: scale(1); }
+    }
     .how-to-link {
       display: block;
       text-align: center;
@@ -146,22 +212,30 @@
     <div class="left-col">
       <h1>Chess <span class="accent">Engine</span></h1>
       <div id="board"></div>
-      <div id="status">Pick a side and opponent, then New Game.</div>
+      <div id="status">Pick a side and opponent, then click Start Game.</div>
     </div>
 
-    <div class="panel">
-      <p class="panel-label">Play as</p>
-      <div class="color-row">
-        <button class="color-btn selected" data-color="white" onclick="selectColor('white')">White</button>
-        <button class="color-btn" data-color="black" onclick="selectColor('black')">Black</button>
-        <button class="color-btn" data-color="random" onclick="selectColor('random')">Random</button>
+    <div class="right-col">
+      <div class="panel">
+        <div class="panel-header">
+          <p class="panel-label">Play as</p>
+          <div class="header-right">
+            <span id="liveIndicator" class="live-indicator"><span class="live-dot"></span>Live</span>
+            <button id="soundToggle" class="sound-toggle on" onclick="toggleSound()" title="Toggle sound">&#128266;</button>
+          </div>
+        </div>
+        <div class="color-row">
+          <button class="color-btn selected" data-color="white" onclick="selectColor('white')">White</button>
+          <button class="color-btn" data-color="black" onclick="selectColor('black')">Black</button>
+          <button class="color-btn" data-color="random" onclick="selectColor('random')">Random</button>
+        </div>
+
+        <p class="panel-label" style="margin-bottom:12px;">Opponent</p>
+        <div id="opponents"></div>
+
+        <button id="newGameBtn" class="new-game-btn" onclick="newGame()">Start Game</button>
+        <a class="how-to-link" href="https://www.chess.com/learn-how-to-play-chess" target="_blank" rel="noopener">New to chess? Learn how to play &rarr;</a>
       </div>
-
-      <p class="panel-label">Opponent</p>
-      <div id="opponents"></div>
-
-      <button class="new-game-btn" onclick="newGame()">New Game</button>
-      <a class="how-to-link" href="https://www.chess.com/learn-how-to-play-chess" target="_blank" rel="noopener">New to chess? Learn how to play &rarr;</a>
     </div>
   </div>
 
@@ -169,13 +243,46 @@
   <script src="https://unpkg.com/chess.js@0.10.3/chess.js"></script>
   <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
   <script>
+    let soundOn = true;
+
+    const SOUNDS = {
+      move:      new Audio('/static/sounds/piece_move.mp3'),
+      capture:   new Audio('/static/sounds/capture.mp3'),
+      check:     new Audio('/static/sounds/check.mp3'),
+      castle:    new Audio('/static/sounds/castle.mp3'),
+      gameStart: new Audio('/static/sounds/game_start.mp3'),
+      gameEnd:   new Audio('/static/sounds/game_end.mp3'),
+    };
+    Object.values(SOUNDS).forEach(a => { a.preload = 'auto'; a.load(); });
+
+    function toggleSound() {
+      soundOn = !soundOn;
+      const btn = document.getElementById('soundToggle');
+      btn.classList.toggle('on', soundOn);
+      btn.innerHTML = soundOn ? '&#128266;' : '&#128263;';
+    }
+
+    function playSound(name) {
+      if (!soundOn) return;
+      const a = SOUNDS[name];
+      if (!a) return;
+      try { a.currentTime = 0; a.play().catch(() => {}); } catch (e) {}
+    }
+
+    function playMoveSound(moveObj) {
+      if (game.in_check()) { playSound('check'); return; }
+      if (moveObj && (moveObj.flags.includes('k') || moveObj.flags.includes('q'))) { playSound('castle'); return; }
+      if (moveObj && (moveObj.flags.includes('c') || moveObj.flags.includes('e'))) { playSound('capture'); return; }
+      playSound('move');
+    }
+
     const OPPONENTS = [
-      { id: "my_engine_1",   name: "My Engine \u00b7 Lvl 1",  elo: "~700" },
-      { id: "my_engine_2",   name: "My Engine \u00b7 Lvl 2",  elo: "~1000" },
-      { id: "my_engine_3",   name: "My Engine \u00b7 Lvl 3",  elo: "~1200" },
-      { id: "stockfish_4",   name: "Stockfish Lite",          elo: "~2000" },
-      { id: "magnus",        name: "Magnus Carlsen",          elo: "~2850" },
-      { id: "stockfish_6",   name: "Stockfish Max",           elo: "Full strength" },
+      { id: "my_engine_1",   name: "My Engine \u00b7 Lvl 1",  elo: "300-500",          icon: "baltra_chess_engine_logo.jpg" },
+      { id: "my_engine_2",   name: "My Engine \u00b7 Lvl 2",  elo: "500-800",         icon: "baltra_chess_engine_logo.jpg" },
+      { id: "my_engine_3",   name: "My Engine \u00b7 Lvl 3",  elo: "~1200",         icon: "baltra_chess_engine_logo.jpg" },
+      { id: "stockfish_4",   name: "Stockfish Lite",          elo: "~2000",         icon: "stockfish_logo.jpg" },
+      { id: "magnus",        name: "Magnus Carlsen (Stockfish)",          elo: "~2850",         icon: "magnus_carlsen_image.png" },
+      { id: "stockfish_6",   name: "Stockfish Max",           elo: "3000+", icon: "stockfish_logo.jpg" },
     ];
 
     let game = new Chess();
@@ -183,7 +290,8 @@
     let selectedColor = "white";
     let selectedOpponent = "my_engine_3";
     let playerColor = "white";
-    let selectedSquare = null;   // for click-to-move
+    let selectedSquare = null;
+    let gameActive = false;
 
     const oppContainer = document.getElementById("opponents");
     OPPONENTS.forEach((opp, i) => {
@@ -191,7 +299,7 @@
       card.className = "opponent-card" + (i === 2 ? " selected" : "");
       card.dataset.id = opp.id;
       card.innerHTML =
-        '<div class="avatar"></div>' +
+        '<img class="avatar" src="/static/images/' + opp.icon + '" alt="">' +
         '<div class="opponent-info">' +
           '<div class="opponent-name">' + opp.name + '</div>' +
           '<div class="opponent-elo">' + opp.elo + '</div>' +
@@ -216,6 +324,12 @@
 
     function setStatus(text) {
       document.getElementById("status").textContent = text;
+    }
+
+    function setGameActive(active) {
+      gameActive = active;
+      document.getElementById('liveIndicator').classList.toggle('active', active);
+      document.getElementById('newGameBtn').textContent = active ? 'Reset Game' : 'Start Game';
     }
 
     function playerIsWhite() { return playerColor === "white"; }
@@ -272,13 +386,15 @@
       return (game.turn() === 'w') === playerIsWhite();
     }
 
-    // Apply a move chosen by the human (from drag OR click). Returns true if applied.
     function applyHumanMove(from, to) {
       const move = game.move({ from: from, to: to, promotion: 'q' });
       if (move === null) return false;
       board.position(game.fen());
       updateCheckHighlight();
+      playMoveSound(move);
       if (game.game_over()) {
+        playSound('gameEnd');
+        setGameActive(false);
         setStatus("Game over: " + gameResult());
       } else {
         setStatus("Opponent thinking...");
@@ -287,7 +403,6 @@
       return true;
     }
 
-    // ----- Drag handlers -----
     function onDragStart(source, piece) {
       clearSelection();
       if (game.game_over()) return false;
@@ -302,7 +417,8 @@
       if (move === null) return "snapback";
       board.position(game.fen());
       updateCheckHighlight();
-      if (game.game_over()) { setStatus("Game over: " + gameResult()); return; }
+      playMoveSound(move);
+      if (game.game_over()) { playSound('gameEnd'); setGameActive(false); setStatus("Game over: " + gameResult()); return; }
       setStatus("Opponent thinking...");
       window.setTimeout(requestEngineMove, 250);
     }
@@ -311,7 +427,6 @@
       clearMoveHighlights();
     }
 
-    // ----- Click-to-move -----
     function clearSelection() {
       selectedSquare = null;
       clearMoveHighlights();
@@ -326,19 +441,13 @@
 
     function onSquareClick(square) {
       if (!myTurn()) return;
-
-      // If a piece is already selected, try to move it to the clicked square
       if (selectedSquare) {
-        if (square === selectedSquare) { clearSelection(); return; }  // clicked same -> deselect
-        // Clicking another of your own pieces -> switch selection
+        if (square === selectedSquare) { clearSelection(); return; }
         if (isMyPieceAt(square)) { selectSquareForClick(square); return; }
-        // Otherwise attempt the move
-        const applied = applyHumanMove(selectedSquare, square);
+        applyHumanMove(selectedSquare, square);
         clearSelection();
         return;
       }
-
-      // No piece selected yet: select if it's your piece
       if (isMyPieceAt(square)) {
         selectSquareForClick(square);
       }
@@ -356,15 +465,20 @@
         if (data.game_over && !data.move) {
           board.position(game.fen());
           updateCheckHighlight();
+          playSound('gameEnd');
+          setGameActive(false);
           setStatus("Game over: " + (data.result || gameResult()));
           return;
         }
 
-        game.move(data.move, { sloppy: true });
+        const move = game.move(data.move, { sloppy: true });
         board.position(game.fen());
         updateCheckHighlight();
+        playMoveSound(move);
 
         if (game.game_over()) {
+          playSound('gameEnd');
+          setGameActive(false);
           setStatus("Game over: " + gameResult());
         } else {
           setStatus("Your move.");
@@ -381,6 +495,12 @@
     }
 
     function newGame() {
+      // press animation
+      const btn = document.getElementById('newGameBtn');
+      btn.classList.remove('pressed');
+      void btn.offsetWidth; // reflow so the animation can re-trigger
+      btn.classList.add('pressed');
+
       game = new Chess();
       clearSelection();
       playerColor = selectedColor;
@@ -391,6 +511,8 @@
       board.start();
       clearMoveHighlights();
       clearCheckHighlight();
+      playSound('gameStart');
+      setGameActive(true);
       setStatus("Your move.");
       attachSquareClicks();
       if (!playerIsWhite()) {
@@ -399,7 +521,6 @@
       }
     }
 
-    // Attach click handlers to all board squares (re-attach after board redraws)
     function attachSquareClicks() {
       $('#board .square-55d63').off('click.ctm').on('click.ctm', function () {
         const square = $(this).attr('data-square');
@@ -416,7 +537,6 @@
       onSnapEnd: onSnapEnd
     });
 
-    // Attach click handlers initially
     attachSquareClicks();
   </script>
 </body>
